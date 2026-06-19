@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard - รับออเดอร์</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Noto+Serif+Thai:wght@700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --brown:#3D1C02; --orange:#E85D04; --cream:#FDF6ED;
+  --border:#E8D5B0; --text:#2D1B00; --muted:#8B6914;
+  --green:#2D6A4F; --green-light:#E8F5EE; --red:#C1121F; --red-light:#FFE8EA;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Sarabun',sans-serif; background:var(--cream); color:var(--text); }
+.header {
+  background:var(--brown); padding:16px 24px;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.header h1 { color:#fff; font-family:'Noto Serif Thai',serif; font-size:20px; }
+.header-right { display:flex; align-items:center; gap:16px; }
+.header .live { display:flex; align-items:center; gap:6px; color:#8FE1A8; font-size:13px; font-weight:600; }
+.dot { width:8px; height:8px; border-radius:50%; background:#8FE1A8; animation:pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.nav-link { color:#E8C99A; font-size:13px; text-decoration:none; font-weight:600; }
+.nav-link:hover { color:#fff; }
+
+.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; padding:16px; }
+.stat-card { background:#fff; border-radius:12px; border:1.5px solid var(--border); padding:14px; text-align:center; }
+.stat-num { font-size:28px; font-weight:700; color:var(--orange); }
+.stat-label { font-size:12px; color:var(--muted); margin-top:2px; }
+
+.toolbar { padding:0 16px 12px; display:flex; gap:8px; }
+.btn {
+  padding:8px 16px; border-radius:8px; border:1.5px solid var(--border);
+  background:#fff; font-family:'Sarabun',sans-serif; font-size:13px;
+  font-weight:600; cursor:pointer; color:var(--text);
+}
+.btn.danger { color:var(--red); border-color:#FFCCCC; }
+
+.tabs { display:flex; gap:6px; padding:0 16px 12px; }
+.tab-btn {
+  padding:8px 16px; border-radius:20px; border:1.5px solid var(--border);
+  background:#fff; font-family:'Sarabun',sans-serif; font-size:13px;
+  font-weight:600; cursor:pointer; color:var(--muted);
+}
+.tab-btn.active { background:var(--orange); color:#fff; border-color:var(--orange); }
+
+.orders-wrap { padding:0 16px 20px; }
+.order-card {
+  background:#fff; border-radius:14px; border:1.5px solid var(--border);
+  margin-bottom:10px; overflow:hidden; animation:slideIn 0.3s ease;
+}
+@keyframes slideIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+.order-card.paid { opacity:0.7; }
+.order-header {
+  background:var(--brown); padding:10px 14px;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.order-id { color:#fff; font-weight:700; font-size:15px; }
+.order-time { color:#E8C99A; font-size:12px; }
+.order-table-badge { background:var(--orange); color:#fff; padding:3px 12px; border-radius:20px; font-size:12px; font-weight:700; }
+.order-items { padding:12px 14px; }
+.order-item { display:flex; justify-content:space-between; padding:5px 0; font-size:14px; border-bottom:1px solid var(--border); }
+.order-item:last-child { border:none; }
+.order-note { padding:8px 14px; background:#FFFAED; font-size:13px; color:var(--muted); border-top:1px solid var(--border); }
+.order-total { padding:10px 14px; background:var(--green-light); display:flex; justify-content:space-between; font-weight:700; color:var(--green); }
+
+.order-actions { padding:10px 14px; display:flex; gap:8px; border-top:1px solid var(--border); }
+.action-btn {
+  flex:1; padding:10px; border-radius:8px; border:none;
+  font-family:'Sarabun',sans-serif; font-size:13px; font-weight:700; cursor:pointer;
+}
+.action-btn.pay { background:var(--orange); color:#fff; }
+.action-btn.receipt { background:var(--cream); color:var(--brown); border:1.5px solid var(--border); }
+.paid-tag {
+  display:inline-flex; align-items:center; gap:4px;
+  background:var(--green-light); color:var(--green);
+  font-size:12px; font-weight:700; padding:4px 10px; border-radius:20px;
+}
+
+.empty-state { text-align:center; padding:60px 20px; color:var(--muted); }
+.empty-state .icon { font-size:48px; margin-bottom:12px; }
+
+/* MODAL */
+.modal-overlay {
+  display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+  background:rgba(0,0,0,0.5); z-index:1000;
+  align-items:center; justify-content:center;
+}
+.modal-overlay.show { display:flex; }
+.modal-box {
+  background:#fff; border-radius:16px; padding:20px; width:90%; max-width:340px;
+  max-height:85vh; overflow-y:auto;
+}
+.modal-title { font-size:17px; font-weight:700; margin-bottom:14px; color:var(--brown); }
+.modal-row { display:flex; justify-content:space-between; padding:8px 0; font-size:14px; }
+.modal-row.total { font-weight:700; font-size:17px; color:var(--orange); border-top:1.5px dashed var(--border); margin-top:8px; padding-top:12px; }
+.quick-cash { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:10px 0; }
+.quick-cash button {
+  padding:10px; border-radius:8px; border:1.5px solid var(--border);
+  background:var(--cream); font-family:'Sarabun',sans-serif; font-size:13px; font-weight:700; cursor:pointer;
+}
+.received-input {
+  width:100%; padding:12px; border:1.5px solid var(--border); border-radius:10px;
+  font-family:'Sarabun',sans-serif; font-size:18px; font-weight:700; text-align:center;
+  color:var(--text); margin:8px 0;
+}
+.received-input:focus { outline:none; border-color:var(--orange); }
+.change-display {
+  background:var(--green-light); color:var(--green); border-radius:10px;
+  padding:14px; text-align:center; margin:10px 0;
+}
+.change-display .label { font-size:12px; }
+.change-display .amount { font-size:26px; font-weight:700; }
+.modal-actions { display:flex; gap:8px; margin-top:14px; }
+.modal-actions button {
+  flex:1; padding:12px; border-radius:10px; border:none;
+  font-family:'Sarabun',sans-serif; font-size:14px; font-weight:700; cursor:pointer;
+}
+.modal-actions .confirm { background:var(--orange); color:#fff; }
+.modal-actions .cancel { background:var(--cream); color:var(--muted); border:1.5px solid var(--border); }
+.error-text { color:var(--red); font-size:12px; margin-top:4px; min-height:16px; }
+
+/* RECEIPT (thermal) */
+.receipt-paper {
+  width:280px; background:#fff; padding:16px; font-family:'Sarabun',monospace,sans-serif;
+  color:#000; margin:0 auto; border:1px dashed #ccc;
+}
+.receipt-paper .shop-name { text-align:center; font-weight:700; font-size:16px; }
+.receipt-paper .shop-sub { text-align:center; font-size:11px; margin-bottom:8px; }
+.receipt-divider { border-top:1px dashed #000; margin:8px 0; }
+.receipt-row { display:flex; justify-content:space-between; font-size:12px; margin:3px 0; }
+.receipt-row.bold { font-weight:700; }
+.receipt-row span:first-child { max-width:160px; }
+.receipt-footer { text-align:center; font-size:11px; margin-top:10px; }
+
+@media print {
+  body * { visibility:hidden; }
+  #printArea, #printArea * { visibility:visible; }
+  #printArea { position:absolute; top:0; left:0; width:80mm; }
+  .receipt-paper { border:none; width:100%; }
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🖥️ หน้าจอรับออเดอร์</h1>
+  <div class="header-right">
+    <a class="nav-link" href="/report">📊 รายงานยอดขาย</a>
+    <div class="live"><div class="dot"></div>Live</div>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat-card"><div class="stat-num" id="totalOrders">0</div><div class="stat-label">ออเดอร์ทั้งหมด</div></div>
+  <div class="stat-card"><div class="stat-num" id="totalTables">0</div><div class="stat-label">โต๊ะที่สั่ง</div></div>
+  <div class="stat-card"><div class="stat-num" id="totalRevenue">฿0</div><div class="stat-label">ยอดรวม</div></div>
+</div>
+
+<div class="toolbar">
+  <button class="btn" onclick="fetchOrders()">🔄 รีเฟรช</button>
+  <button class="btn danger" onclick="hidePaidOrders()">🗑️ ซ่อนรายการที่ชำระแล้ว</button>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" id="tabAll" onclick="setFilter('all')">ทั้งหมด</button>
+  <button class="tab-btn" id="tabUnpaid" onclick="setFilter('unpaid')">รอชำระ</button>
+  <button class="tab-btn" id="tabPaid" onclick="setFilter('paid')">ชำระแล้ว</button>
+</div>
+
+<div class="orders-wrap" id="ordersWrap">
+  <div class="empty-state"><div class="icon">🍽️</div><div>ยังไม่มีออเดอร์</div></div>
+</div>
+
+<!-- PAYMENT MODAL -->
+<div class="modal-overlay" id="payModal">
+  <div class="modal-box">
+    <div class="modal-title">รับเงิน — ออเดอร์ #<span id="payOrderId"></span></div>
+    <div class="modal-row total"><span>ยอดที่ต้องชำระ</span><span id="payTotal">฿0</span></div>
+
+    <div class="quick-cash" id="quickCash"></div>
+    <input type="number" class="received-input" id="receivedInput" placeholder="ระบุจำนวนเงินที่รับ" inputmode="decimal">
+    <div class="error-text" id="payError"></div>
+
+    <div class="change-display" id="changeDisplay" style="display:none;">
+      <div class="label">เงินทอน</div>
+      <div class="amount" id="changeAmount">฿0</div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="cancel" onclick="closePayModal()">ยกเลิก</button>
+      <button class="confirm" onclick="confirmPayment()">ยืนยันรับเงิน</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECEIPT MODAL -->
+<div class="modal-overlay" id="receiptModal">
+  <div class="modal-box">
+    <div id="printArea">
+      <div class="receipt-paper" id="receiptContent"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="cancel" onclick="closeReceiptModal()">ปิด</button>
+      <button class="confirm" onclick="window.print()">🖨️ พิมพ์ใบเสร็จ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let lastCount = 0;
+let allOrders = [];
+let lastOrdersSnapshot = '';
+let currentFilter = 'all';
+let activeOrderId = null;
+let activeOrderTotal = 0;
+let modalOpen = false;
+
+async function fetchOrders() {
+  try {
+    const res = await fetch('/orders');
+    const orders = await res.json();
+
+    if (orders.length > lastCount) playAlert();
+    lastCount = orders.length;
+
+    document.getElementById('totalOrders').textContent = orders.length;
+    const tables = new Set(orders.map(o => o.table)).size;
+    document.getElementById('totalTables').textContent = tables;
+    const rev = orders.filter(o => o.status === 'paid').reduce((s, o) => s + (o.total || 0), 0);
+    document.getElementById('totalRevenue').textContent = '฿' + rev;
+
+    const snapshot = JSON.stringify(orders);
+    if (snapshot === lastOrdersSnapshot) return;
+    lastOrdersSnapshot = snapshot;
+    allOrders = orders;
+
+    if (!modalOpen) renderOrders();
+  } catch(e) { console.error('Fetch error:', e); }
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  document.getElementById('tabAll').classList.toggle('active', f==='all');
+  document.getElementById('tabUnpaid').classList.toggle('active', f==='unpaid');
+  document.getElementById('tabPaid').classList.toggle('active', f==='paid');
+  renderOrders();
+}
+
+function renderOrders() {
+  const wrap = document.getElementById('ordersWrap');
+  let orders = [...allOrders].reverse().filter(o => !o.hidden);
+  if (currentFilter !== 'all') orders = orders.filter(o => o.status === currentFilter);
+
+  if (!orders.length) {
+    wrap.innerHTML = '<div class="empty-state"><div class="icon">🍽️</div><div>ไม่มีออเดอร์ในหมวดนี้</div></div>';
+    return;
+  }
+
+  wrap.innerHTML = orders.map(o => {
+    const isPaid = o.status === 'paid';
+    return `
+      <div class="order-card ${isPaid ? 'paid' : ''}">
+        <div class="order-header">
+          <div>
+            <div class="order-id">ออเดอร์ #${o.order_id}</div>
+            <div class="order-time">⏰ ${o.time}</div>
+          </div>
+          <div class="order-table-badge">โต๊ะ ${o.table}</div>
+        </div>
+        <div class="order-items">
+          ${o.items.map(i => `
+            <div class="order-item">
+              <span>${i.name}${i.comment ? ` <span style="color:var(--orange); font-size:12px;">(${i.comment})</span>` : ''}</span>
+              <span style="color:var(--muted)">×${i.qty} ${i.price ? '= ฿'+(i.price*i.qty) : ''}</span>
+            </div>
+          `).join('')}
+        </div>
+        ${o.note ? `<div class="order-note">📝 ${o.note}</div>` : ''}
+        <div class="order-total"><span>รวม</span><span>฿${o.total}</span></div>
+        <div class="order-actions">
+          ${isPaid
+            ? `<span class="paid-tag">✓ ชำระแล้ว (ทอน ฿${o.change_due})</span>
+               <button class="action-btn receipt" onclick="showReceipt(${o.order_id})">🧾 ใบเสร็จ</button>`
+            : `<button class="action-btn pay" onclick="openPayModal(${o.order_id}, ${o.total})">💰 รับเงิน</button>`
+          }
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function openPayModal(orderId, total) {
+  activeOrderId = orderId;
+  activeOrderTotal = total;
+  modalOpen = true;
+  document.getElementById('payOrderId').textContent = orderId;
+  document.getElementById('payTotal').textContent = '฿' + total;
+  document.getElementById('receivedInput').value = '';
+  document.getElementById('payError').textContent = '';
+  document.getElementById('changeDisplay').style.display = 'none';
+
+  const quickAmounts = generateQuickCash(total);
+  document.getElementById('quickCash').innerHTML = quickAmounts.map(amt =>
+    `<button onclick="setReceived(${amt})">฿${amt}</button>`
+  ).join('');
+
+  document.getElementById('payModal').classList.add('show');
+  document.getElementById('receivedInput').oninput = updateChange;
+}
+
+function generateQuickCash(total) {
+  const rounds = [20, 50, 100, 500, 1000];
+  const options = new Set();
+  options.add(total);
+  for (const r of rounds) {
+    const rounded = Math.ceil(total / r) * r;
+    if (rounded > total || rounded === total) options.add(rounded);
+  }
+  return [...options].sort((a,b) => a-b).slice(0, 6);
+}
+
+function setReceived(amt) {
+  document.getElementById('receivedInput').value = amt;
+  updateChange();
+}
+
+function updateChange() {
+  const received = parseFloat(document.getElementById('receivedInput').value) || 0;
+  const errEl = document.getElementById('payError');
+  const changeEl = document.getElementById('changeDisplay');
+
+  if (received <= 0) { changeEl.style.display = 'none'; errEl.textContent = ''; return; }
+
+  if (received < activeOrderTotal) {
+    errEl.textContent = 'จำนวนเงินน้อยกว่ายอดที่ต้องชำระ';
+    changeEl.style.display = 'none';
+    return;
+  }
+  errEl.textContent = '';
+  changeEl.style.display = 'block';
+  document.getElementById('changeAmount').textContent = '฿' + (received - activeOrderTotal).toFixed(2).replace(/\.00$/,'');
+}
+
+function closePayModal() {
+  modalOpen = false;
+  document.getElementById('payModal').classList.remove('show');
+}
+
+async function confirmPayment() {
+  const received = parseFloat(document.getElementById('receivedInput').value);
+  if (!received || received < activeOrderTotal) {
+    document.getElementById('payError').textContent = 'กรุณาระบุจำนวนเงินให้ถูกต้อง';
+    return;
+  }
+  try {
+    const res = await fetch(`/orders/${activeOrderId}/pay`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ received })
+    });
+    const data = await res.json();
+    if (data.success) {
+      closePayModal();
+      await fetchOrders();
+      showReceipt(activeOrderId);
+    } else {
+      document.getElementById('payError').textContent = data.error || 'เกิดข้อผิดพลาด';
+    }
+  } catch(e) {
+    document.getElementById('payError').textContent = 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้';
+  }
+}
+
+function showReceipt(orderId) {
+  modalOpen = true;
+  const o = allOrders.find(x => x.order_id === orderId);
+  if (!o) return;
+
+  const html = `
+    <div class="shop-name">ร้านข้าวแสนอร่อย</div>
+    <div class="shop-sub">ใบเสร็จรับเงิน</div>
+    <div class="receipt-divider"></div>
+    <div class="receipt-row"><span>เลขที่</span><span>#${o.order_id}</span></div>
+    <div class="receipt-row"><span>โต๊ะ</span><span>${o.table}</span></div>
+    <div class="receipt-row"><span>วันที่</span><span>${o.date} ${o.time}</span></div>
+    <div class="receipt-divider"></div>
+    ${o.items.map(i => `
+      <div class="receipt-row">
+        <span>${i.name}${i.comment ? ` (${i.comment})` : ''} ×${i.qty}</span>
+        <span>฿${(i.price*i.qty).toFixed(2).replace(/\.00$/,'')}</span>
+      </div>
+    `).join('')}
+    <div class="receipt-divider"></div>
+    <div class="receipt-row bold"><span>รวมทั้งหมด</span><span>฿${o.total}</span></div>
+    ${o.status === 'paid' ? `
+      <div class="receipt-row"><span>รับเงิน</span><span>฿${o.received}</span></div>
+      <div class="receipt-row bold"><span>เงินทอน</span><span>฿${o.change_due}</span></div>
+    ` : ''}
+    <div class="receipt-footer">ขอบคุณที่ใช้บริการ 🙏</div>
+  `;
+  document.getElementById('receiptContent').innerHTML = html;
+  document.getElementById('receiptModal').classList.add('show');
+}
+
+function closeReceiptModal() {
+  modalOpen = false;
+  document.getElementById('receiptModal').classList.remove('show');
+  renderOrders();
+}
+
+function playAlert() {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(); osc.stop(ctx.currentTime + 0.4);
+  } catch(e) {}
+}
+
+async function hidePaidOrders() {
+  if (!confirm('ซ่อนรายการที่ชำระแล้วทั้งหมดจากหน้าจอนี้? (ข้อมูลยังเก็บไว้ในรายงานยอดขาย)')) return;
+  await fetch('/orders/hide-paid', {method:'POST'});
+  fetchOrders();
+}
+
+fetchOrders();
+setInterval(fetchOrders, 3000);
+</script>
+</body>
+</html>

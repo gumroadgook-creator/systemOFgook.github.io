@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>รายงานยอดขาย - พิมพ์</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Noto+Serif+Thai:wght@700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --brown:#3D1C02; --orange:#E85D04; --cream:#FDF6ED;
+  --border:#E8D5B0; --text:#2D1B00; --muted:#8B6914;
+  --green:#2D6A4F; --green-light:#E8F5EE;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Sarabun',sans-serif; color:var(--text); background:var(--cream); }
+
+.toolbar { padding:14px 24px; display:flex; gap:10px; background:#fff; border-bottom:1.5px solid var(--border); }
+.toolbar button {
+  padding:10px 18px; border-radius:8px; border:none; cursor:pointer;
+  font-family:'Sarabun',sans-serif; font-size:14px; font-weight:700;
+}
+.toolbar .print-btn { background:var(--orange); color:#fff; }
+.toolbar .back-btn { background:var(--cream); color:var(--text); border:1.5px solid var(--border); }
+
+.page {
+  width:210mm; min-height:297mm; margin:20px auto; background:#fff;
+  padding:18mm 16mm; box-shadow:0 2px 16px rgba(0,0,0,0.1);
+}
+
+.report-header { text-align:center; margin-bottom:6mm; border-bottom:2px solid var(--brown); padding-bottom:5mm; }
+.report-header h1 { font-family:'Noto Serif Thai',serif; font-size:24px; color:var(--brown); }
+.report-header .period { font-size:13px; color:var(--muted); margin-top:4px; }
+.report-header .generated { font-size:11px; color:var(--muted); margin-top:2px; }
+
+.summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10mm; margin-bottom:8mm; }
+.summary-box { text-align:center; border:1.5px solid var(--border); border-radius:8px; padding:6mm 2mm; }
+.summary-box .num { font-size:26px; font-weight:700; color:var(--orange); }
+.summary-box .label { font-size:12px; color:var(--muted); margin-top:2px; }
+
+.section-h { font-size:15px; font-weight:700; color:var(--brown); margin-bottom:4mm; padding-bottom:2mm; border-bottom:1px solid var(--border); }
+
+table { width:100%; border-collapse:collapse; margin-bottom:8mm; }
+th { text-align:left; font-size:12px; color:var(--muted); padding:4px 6px; border-bottom:1.5px solid var(--border); }
+th.num-col, td.num-col { text-align:right; }
+td { font-size:13px; padding:5px 6px; border-bottom:1px solid var(--border); }
+tr:nth-child(even) td { background:var(--green-light); }
+
+.footer-note { text-align:center; font-size:11px; color:var(--muted); margin-top:10mm; }
+
+@media print {
+  body { background:#fff; }
+  .toolbar { display:none; }
+  .page { margin:0; box-shadow:none; width:auto; min-height:auto; }
+  @page { size: A4; margin: 14mm; }
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button class="print-btn" onclick="window.print()">🖨️ พิมพ์ / บันทึกเป็น PDF</button>
+  <button class="back-btn" onclick="window.close()">ปิดหน้านี้</button>
+</div>
+
+<div class="page" id="reportPage">
+  <div class="report-header">
+    <h1>🍜 ร้านข้าวแสนอร่อย — รายงานยอดขาย</h1>
+    <div class="period" id="periodText">ช่วงวันที่: -</div>
+    <div class="generated" id="generatedText"></div>
+  </div>
+
+  <div class="summary-grid">
+    <div class="summary-box"><div class="num" id="sOrders">0</div><div class="label">ออเดอร์ (ชำระแล้ว)</div></div>
+    <div class="summary-box"><div class="num" id="sTables">0</div><div class="label">โต๊ะที่ใช้บริการ</div></div>
+    <div class="summary-box"><div class="num" id="sRevenue">฿0</div><div class="label">ยอดขายรวม</div></div>
+  </div>
+
+  <div class="section-h">เมนูขายดี</div>
+  <table>
+    <thead>
+      <tr><th>อันดับ</th><th>เมนู</th><th class="num-col">จำนวนที่ขาย</th><th class="num-col">ยอดขาย</th></tr>
+    </thead>
+    <tbody id="topItemsBody"></tbody>
+  </table>
+
+  <div class="footer-note">รายงานนี้สร้างโดยระบบสั่งอาหาร QR Code — ใช้สำหรับการสรุปยอดขายภายในร้านเท่านั้น</div>
+</div>
+
+<script>
+function fmtThaiDate(s) {
+  const [y,m,d] = s.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+async function loadPrintReport() {
+  const params = new URLSearchParams(location.search);
+  const start = params.get('start');
+  const end = params.get('end');
+
+  const res = await fetch(`/report/data?start=${start}&end=${end}`);
+  const data = await res.json();
+
+  document.getElementById('periodText').textContent =
+    start === end ? `วันที่: ${fmtThaiDate(start)}` : `ช่วงวันที่: ${fmtThaiDate(start)} ถึง ${fmtThaiDate(end)}`;
+
+  const now = new Date();
+  document.getElementById('generatedText').textContent =
+    'พิมพ์เมื่อ: ' + now.toLocaleDateString('th-TH') + ' ' + now.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+
+  document.getElementById('sOrders').textContent = data.total_orders;
+  document.getElementById('sTables').textContent = data.total_tables;
+  document.getElementById('sRevenue').textContent = '฿' + data.total_revenue;
+
+  const tbody = document.getElementById('topItemsBody');
+  if (!data.top_items.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#8B6914;">ไม่มีข้อมูลการขายในช่วงนี้</td></tr>';
+  } else {
+    tbody.innerHTML = data.top_items.map((item, idx) => `
+      <tr>
+        <td>${idx+1}</td>
+        <td>${item.name}</td>
+        <td class="num-col">${item.qty}</td>
+        <td class="num-col">฿${item.revenue}</td>
+      </tr>
+    `).join('');
+  }
+}
+
+loadPrintReport();
+</script>
+</body>
+</html>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>รายงานยอดขาย</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Noto+Serif+Thai:wght@700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --brown:#3D1C02; --orange:#E85D04; --cream:#FDF6ED;
+  --border:#E8D5B0; --text:#2D1B00; --muted:#8B6914;
+  --green:#2D6A4F; --green-light:#E8F5EE;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Sarabun',sans-serif; background:var(--cream); color:var(--text); }
+.header {
+  background:var(--brown); padding:16px 24px;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.header h1 { color:#fff; font-family:'Noto Serif Thai',serif; font-size:20px; }
+.nav-link { color:#E8C99A; font-size:13px; text-decoration:none; font-weight:600; }
+.nav-link:hover { color:#fff; }
+
+.date-picker {
+  display:flex; align-items:center; gap:8px; padding:16px;
+  background:#fff; border-bottom:1.5px solid var(--border);
+  flex-wrap:wrap;
+}
+.date-picker label { font-size:13px; color:var(--muted); font-weight:600; }
+.date-picker input {
+  padding:8px 10px; border-radius:8px; border:1.5px solid var(--border);
+  font-family:'Sarabun',sans-serif; font-size:13px; background:var(--cream); color:var(--text);
+}
+.date-picker button {
+  padding:8px 14px; border-radius:8px; border:1.5px solid var(--border);
+  background:var(--cream); color:var(--text); font-size:13px; font-weight:600; cursor:pointer;
+}
+.date-picker .today-btn { border-color:var(--orange); background:var(--orange); color:#fff; }
+.date-picker .pdf-btn { border-color:var(--green); background:var(--green); color:#fff; margin-left:auto; }
+.quick-range { display:flex; gap:6px; padding:0 16px 14px; flex-wrap:wrap; }
+.quick-range button {
+  padding:6px 12px; border-radius:20px; border:1.5px solid var(--border);
+  background:#fff; color:var(--muted); font-size:12px; font-weight:600; cursor:pointer;
+}
+.quick-range button.active { background:var(--orange); border-color:var(--orange); color:#fff; }
+
+.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; padding:16px; }
+.stat-card { background:#fff; border-radius:12px; border:1.5px solid var(--border); padding:16px; text-align:center; }
+.stat-num { font-size:26px; font-weight:700; color:var(--orange); }
+.stat-label { font-size:12px; color:var(--muted); margin-top:4px; }
+
+.section-title { font-size:14px; font-weight:700; color:var(--brown); padding:8px 16px; }
+
+.top-items { padding:0 16px 16px; }
+.top-item-row {
+  display:flex; align-items:center; gap:10px; background:#fff;
+  border:1.5px solid var(--border); border-radius:10px; padding:10px 14px; margin-bottom:6px;
+}
+.top-item-rank {
+  width:24px; height:24px; border-radius:50%; background:var(--orange); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; flex-shrink:0;
+}
+.top-item-name { flex:1; font-size:14px; font-weight:600; }
+.top-item-qty { font-size:13px; color:var(--muted); }
+.top-item-revenue { font-size:14px; font-weight:700; color:var(--green); }
+
+.orders-list { padding:0 16px 30px; }
+.order-row {
+  background:#fff; border:1.5px solid var(--border); border-radius:10px;
+  padding:12px 14px; margin-bottom:8px;
+}
+.order-row-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.order-row-id { font-weight:700; font-size:14px; }
+.order-row-meta { font-size:12px; color:var(--muted); }
+.order-row-items { font-size:13px; color:var(--text); line-height:1.6; }
+.order-row-total { text-align:right; font-weight:700; color:var(--green); margin-top:6px; }
+
+.empty-state { text-align:center; padding:50px 20px; color:var(--muted); }
+.empty-state .icon { font-size:44px; margin-bottom:10px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📊 รายงานยอดขาย</h1>
+  <a class="nav-link" href="/dashboard">← กลับหน้ารับออเดอร์</a>
+</div>
+
+<div class="date-picker">
+  <label>จาก:</label>
+  <input type="date" id="startDate">
+  <label>ถึง:</label>
+  <input type="date" id="endDate">
+  <button onclick="applyDateRange()">ค้นหา</button>
+  <button class="today-btn" onclick="setRange(0)">วันนี้</button>
+  <button class="pdf-btn" onclick="openPdfReport()">🖨️ บันทึกเป็น PDF</button>
+</div>
+<div class="quick-range">
+  <button id="qrToday" onclick="setRange(0)">วันนี้</button>
+  <button id="qr7" onclick="setRange(7)">7 วันล่าสุด</button>
+  <button id="qr30" onclick="setRange(30)">30 วันล่าสุด</button>
+  <button id="qr60" onclick="setRange(60)">2 เดือนล่าสุด</button>
+</div>
+
+<div class="stats">
+  <div class="stat-card"><div class="stat-num" id="rOrders">0</div><div class="stat-label">ออเดอร์ (ชำระแล้ว)</div></div>
+  <div class="stat-card"><div class="stat-num" id="rTables">0</div><div class="stat-label">โต๊ะที่ใช้บริการ</div></div>
+  <div class="stat-card"><div class="stat-num" id="rRevenue">฿0</div><div class="stat-label">ยอดขายรวม</div></div>
+</div>
+
+<div class="section-title">🔥 เมนูขายดี</div>
+<div class="top-items" id="topItems"></div>
+
+<div class="section-title">🧾 รายการออเดอร์ทั้งหมด</div>
+<div class="orders-list" id="ordersList"></div>
+
+<script>
+const TWO_MONTHS_AGO_DAYS = 60;
+
+function fmtDate(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function todayStr() { return fmtDate(new Date()); }
+function daysAgoStr(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return fmtDate(d);
+}
+function minAllowedDate() { return daysAgoStr(TWO_MONTHS_AGO_DAYS); }
+
+function setRange(days) {
+  document.querySelectorAll('.quick-range button').forEach(b => b.classList.remove('active'));
+  const map = {0:'qrToday', 7:'qr7', 30:'qr30', 60:'qr60'};
+  if (map[days]) document.getElementById(map[days]).classList.add('active');
+
+  const end = todayStr();
+  const start = days === 0 ? end : daysAgoStr(days);
+  document.getElementById('startDate').value = start;
+  document.getElementById('endDate').value = end;
+  loadReport(start, end);
+}
+
+function applyDateRange() {
+  document.querySelectorAll('.quick-range button').forEach(b => b.classList.remove('active'));
+  let start = document.getElementById('startDate').value;
+  let end = document.getElementById('endDate').value;
+  const minDate = minAllowedDate();
+  if (start < minDate) start = minDate;
+  if (end < start) end = start;
+  document.getElementById('startDate').value = start;
+  document.getElementById('endDate').value = end;
+  loadReport(start, end);
+}
+
+function openPdfReport() {
+  const start = document.getElementById('startDate').value;
+  const end = document.getElementById('endDate').value;
+  window.open(`/report/print?start=${start}&end=${end}`, '_blank');
+}
+
+async function loadReport(start, end) {
+  try {
+    const res = await fetch(`/report/data?start=${start}&end=${end}`);
+    const data = await res.json();
+
+    document.getElementById('rOrders').textContent = data.total_orders;
+    document.getElementById('rTables').textContent = data.total_tables;
+    document.getElementById('rRevenue').textContent = '฿' + data.total_revenue;
+
+    const topEl = document.getElementById('topItems');
+    if (!data.top_items.length) {
+      topEl.innerHTML = '<div class="empty-state"><div class="icon">📭</div>ยังไม่มีข้อมูลการขายในช่วงนี้</div>';
+    } else {
+      topEl.innerHTML = data.top_items.map((item, idx) => `
+        <div class="top-item-row">
+          <div class="top-item-rank">${idx+1}</div>
+          <div class="top-item-name">${item.name}</div>
+          <div class="top-item-qty">×${item.qty}</div>
+          <div class="top-item-revenue">฿${item.revenue}</div>
+        </div>
+      `).join('');
+    }
+
+    const listEl = document.getElementById('ordersList');
+    if (!data.orders.length) {
+      listEl.innerHTML = '<div class="empty-state"><div class="icon">🍽️</div>ไม่มีออเดอร์ที่ชำระแล้วในช่วงนี้</div>';
+    } else {
+      listEl.innerHTML = [...data.orders].reverse().map(o => `
+        <div class="order-row">
+          <div class="order-row-top">
+            <span class="order-row-id">ออเดอร์ #${o.order_id} · โต๊ะ ${o.table}</span>
+            <span class="order-row-meta">${o.date} ${o.time}</span>
+          </div>
+          <div class="order-row-items">${o.items.map(i => `${i.name}${i.comment ? ' ('+i.comment+')' : ''} ×${i.qty}`).join(', ')}</div>
+          <div class="order-row-total">฿${o.total}</div>
+        </div>
+      `).join('');
+    }
+  } catch(e) {
+    console.error('Report load error:', e);
+  }
+}
+
+document.getElementById('startDate').min = minAllowedDate();
+document.getElementById('endDate').min = minAllowedDate();
+document.getElementById('startDate').max = todayStr();
+document.getElementById('endDate').max = todayStr();
+
+setRange(0);
+</script>
+</body>
+</html>
